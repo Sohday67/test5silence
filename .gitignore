@@ -1,0 +1,18 @@
+# Build artifacts
+/.theos/
+/obj/
+/packages/
+*.dylib
+*.deb
+*.log
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Vendor (clone YTVideoOverlay as a sibling, not as a submodule)
+/YTVideoOverlay/
