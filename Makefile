@@ -1,4 +1,4 @@
-ARCHS = arm64
+ARCHS = arm64 arm64e
 ifeq ($(SIMULATOR),1)
 	TARGET = simulator:clang:latest:15.0
 else
@@ -25,11 +25,9 @@ $(TWEAK_NAME)_FILES = \
 	Source/SkipSilenceManager.m
 
 $(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-function
-# NOTE: YouTubeHeader is a headers-only clone at $THEOS/include/YouTubeHeader.
-# Do NOT list it in _PRIVATE_FRAMEWORKS — that would make Theos emit
-# `-framework YouTubeHeader` at link time, which fails with
-# "framework not found YouTubeHeader". Just importing the headers via
-# #import <YouTubeHeader/...> is enough.
-$(TWEAK_NAME)_FRAMEWORKS = UIKit AVFoundation MediaToolbox AudioToolbox
+$(TWEAK_NAME)_FRAMEWORKS = UIKit AVFoundation CoreMedia MediaToolbox CoreAudio AudioToolbox
+# NOTE: YouTubeHeader is a headers-only collection (provided on the include path
+# by the parent project) — it is NOT a linkable framework. Listing it here made
+# the linker fail with "framework 'YouTubeHeader' not found".
 
 include $(THEOS_MAKE_PATH)/tweak.mk

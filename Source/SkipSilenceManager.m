@@ -8,10 +8,6 @@
 #import "SkipSilenceDetector.h"
 #import "SkipSilenceAudioTap.h"
 
-#import <string.h>
-#import <math.h>
-#import <mach/mach_time.h>
-
 #if DEBUG
   #define SSLog(fmt, ...) NSLog(@"[YTSkipSilence][mgr] " fmt, ##__VA_ARGS__)
 #else
@@ -153,11 +149,7 @@
         return;
     }
 
-    // Detector is constructed with a zeroed format; it gets the real format
-    // from the first audio chunk via audioTap:didReceiveAudio:framesCount:format:.
-    AudioStreamBasicDescription zeroFormat;
-    memset(&zeroFormat, 0, sizeof(zeroFormat));
-    SkipSilenceDetector *det = [[SkipSilenceDetector alloc] initWithFormat:zeroFormat];
+    SkipSilenceDetector *det = [[SkipSilenceDetector alloc] initWithFormat:(AudioStreamBasicDescription){0}];
     det.delegate = self;
     det.silenceThresholdDB = s.silenceThresholdDB;
     det.minSilenceDuration = s.minSilenceDuration;
@@ -204,16 +196,14 @@
     SkipSilenceDetector *det = self.detector;
     if (det == nil) return;
 
-    static AudioStreamBasicDescription lastSynced;
-    static BOOL lastSyncedValid = NO;
+    static dispatch_once_t once;
+    static AudioStreamBasicDescription lastSynced = {0};
     @synchronized(self) {
-        BOOL formatChanged = !lastSyncedValid
-            || lastSynced.mSampleRate != format.mSampleRate
-            || lastSynced.mChannelsPerFrame != format.mChannelsPerFrame
-            || lastSynced.mFormatFlags != format.mFormatFlags;
-        if (format.mSampleRate > 0 && formatChanged) {
+        if (format.mSampleRate > 0 &&
+            (lastSynced.mSampleRate != format.mSampleRate ||
+             lastSynced.mChannelsPerFrame != format.mChannelsPerFrame ||
+             lastSynced.mFormatFlags != format.mFormatFlags)) {
             lastSynced = format;
-            lastSyncedValid = YES;
             // Re-create the detector with the real format so its RMS computation
             // knows whether samples are float or int, interleaved or planar.
             SkipSilenceSettings *s = [SkipSilenceSettings shared];
@@ -243,17 +233,17 @@
 
 - (void)performSkipForSilenceDuration:(NSTimeInterval)silenceDuration {
     [self.stateLock lock];
-    if (self.skipInFlight) {
+    if (_skipInFlight) {
         [self.stateLock unlock];
         return;
     }
-    self.skipInFlight = YES;
-    AVPlayer *p = self.player;
-    NSTimeInterval current = self.lastPlaybackTime;
+    _skipInFlight = YES;
+    AVPlayer *p = _player;
+    NSTimeInterval current = _lastPlaybackTime;
     [self.stateLock unlock];
 
     if (p == nil) {
-        [self.stateLock lock]; self.skipInFlight = NO; [self.stateLock unlock];
+        [self.stateLock lock]; _skipInFlight = NO; [self.stateLock unlock];
         return;
     }
 
@@ -288,7 +278,7 @@
         __strong typeof(weakSelf) sself = weakSelf;
         if (!sself) return;
         [sself.stateLock lock];
-        sself.skipInFlight = NO;
+        sself->_skipInFlight = NO;
         [sself.stateLock unlock];
         [sself.detector reset];
 

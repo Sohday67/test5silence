@@ -5,22 +5,36 @@
 
 #import "SkipSilenceAudioTap.h"
 
-#import <MediaToolbox/MediaToolbox.h>
-#import <AudioToolbox/AudioToolbox.h>
-
 #if DEBUG
   #define SSLog(fmt, ...) NSLog(@"[YTSkipSilence][tap] " fmt, ##__VA_ARGS__)
 #else
   #define SSLog(fmt, ...) do { } while (0)
 #endif
 
-// (The MTAudioProcessingTap callbacks use clientInfo = (__bridge void *)self,
-// so no separate bridging struct is needed.)
+// Bridging context handed to the MTAudioProcessingTap callbacks.
+typedef struct {
+    __unsafe_unretained SkipSilenceAudioTap *tap;
+    AudioStreamBasicDescription format;
+} SkipSilenceTapContext;
+
+// Forward declarations for the MTAudioProcessingTap C callbacks (defined at the
+// bottom of the file). These must match Apple's callback typedefs exactly:
+// only the init callback receives clientInfo / produces tap storage; the rest
+// recover state via MTAudioProcessingTapGetStorage(tap).
+static void tapInitCallback(MTAudioProcessingTapRef tap, void *clientInfo, void **tapStorageOut);
+static void tapFinalizeCallback(MTAudioProcessingTapRef tap);
+static void tapPrepareCallback(MTAudioProcessingTapRef tap, CMItemCount maxFrames,
+                               const AudioStreamBasicDescription *processingFormat);
+static void tapUnprepareCallback(MTAudioProcessingTapRef tap);
+static void tapProcessCallback(MTAudioProcessingTapRef tap, CMItemCount numberFrames,
+                               MTAudioProcessingTapFlags flags, AudioBufferList *bufferListOut,
+                               CMItemCount *numberFramesOut, MTAudioProcessingTapFlags *processFlagsOut);
 
 @interface SkipSilenceAudioTap ()
 @property (nonatomic, strong) NSLock *stateLock;
 @property (nonatomic, assign) MTAudioProcessingTapRef tapRef;
 @property (nonatomic, weak) AVPlayerItem *playerItem;
+@property (nonatomic, strong) NSMutableArray<AVAudioMixInputParameters *> *originalMixParams;
 @property (nonatomic, assign) AudioStreamBasicDescription lastFormat;
 @property (nonatomic, assign) BOOL hasLastFormat;
 @end
@@ -31,6 +45,7 @@
     self = [super init];
     if (self) {
         _stateLock = [[NSLock alloc] init];
+        _originalMixParams = [[NSMutableArray alloc] init];
     }
     return self;
 }
@@ -98,7 +113,9 @@
     for (AVAssetTrack *track in audioTracks) {
         AVMutableAudioMixInputParameters *p =
             [AVMutableAudioMixInputParameters audioMixInputParametersWithTrack:track];
-        [p setAudioProcessingTap:newTap];
+        // The AVFoundation property is `audioTapProcessor` (a retained
+        // NSObject-attributed MTAudioProcessingTapRef), not `audioProcessingTap`.
+        [p setAudioTapProcessor:newTap];
         [params addObject:p];
     }
     mix.inputParameters = params;
@@ -121,7 +138,10 @@
         @try { pi.audioMix = nil; } @catch (id e) {}
     }
     if (tap != NULL) {
-        MTAudioProcessingTapRelease(tap);
+        // MTAudioProcessingTapRef is a CF type; there is no
+        // MTAudioProcessingTapRelease — balance MTAudioProcessingTapCreate's
+        // +1 with CFRelease.
+        CFRelease(tap);
         SSLog(@"detached");
     }
 }
@@ -133,15 +153,16 @@ static void tapInitCallback(MTAudioProcessingTapRef tap, void *clientInfo, void 
     *tapStorageOut = clientInfo;
 }
 
-static void tapFinalizeCallback(MTAudioProcessingTapRef tap, void *clientInfo) {
-    // Nothing to free — clientInfo is bridged, not retained.
+static void tapFinalizeCallback(MTAudioProcessingTapRef tap) {
+    // Nothing to free — the bridged tap storage is not retained.
 }
 
 static void tapPrepareCallback(MTAudioProcessingTapRef tap,
                                CMItemCount maxFrames,
-                               const AudioStreamBasicDescription *processingFormat,
-                               void *clientInfo) {
-    SkipSilenceAudioTap *self = (__bridge SkipSilenceAudioTap *)clientInfo;
+                               const AudioStreamBasicDescription *processingFormat) {
+    // Only the init callback receives clientInfo; everyone else reads it back
+    // out of the tap's storage (set in tapInitCallback).
+    SkipSilenceAudioTap *self = (__bridge SkipSilenceAudioTap *)MTAudioProcessingTapGetStorage(tap);
     if (processingFormat != NULL) {
         [self.stateLock lock];
         self.lastFormat = *processingFormat;
@@ -155,8 +176,8 @@ static void tapPrepareCallback(MTAudioProcessingTapRef tap,
     }
 }
 
-static void tapUnprepareCallback(MTAudioProcessingTapRef tap, void *clientInfo) {
-    SkipSilenceAudioTap *self = (__bridge SkipSilenceAudioTap *)clientInfo;
+static void tapUnprepareCallback(MTAudioProcessingTapRef tap) {
+    SkipSilenceAudioTap *self = (__bridge SkipSilenceAudioTap *)MTAudioProcessingTapGetStorage(tap);
     [self.stateLock lock];
     self.hasLastFormat = NO;
     [self.stateLock unlock];
@@ -167,7 +188,7 @@ static void tapProcessCallback(MTAudioProcessingTapRef tap,
                                MTAudioProcessingTapFlags flags,
                                AudioBufferList *bufferListOut,
                                CMItemCount *numberFramesOut,
-                               MTAudioProcessingTapProcessFlags *processFlagsOut) {
+                               MTAudioProcessingTapFlags *processFlagsOut) {
     void *clientInfo = MTAudioProcessingTapGetStorage(tap);
     SkipSilenceAudioTap *self = (__bridge SkipSilenceAudioTap *)clientInfo;
 

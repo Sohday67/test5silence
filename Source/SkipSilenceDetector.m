@@ -5,10 +5,6 @@
 
 #import "SkipSilenceDetector.h"
 
-#import <math.h>
-#import <mach/mach_time.h>
-#import <AudioToolbox/AudioToolbox.h>
-
 #if DEBUG
   #define SSLog(fmt, ...) NSLog(@"[YTSkipSilence] " fmt, ##__VA_ARGS__)
 #else

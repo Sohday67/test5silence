@@ -34,13 +34,13 @@ Overcast can do this because it owns the audio pipeline and can pre-process the 
 
 ## How it looks
 
-A single icon button appears in the YouTube player overlay — either next to the cast/share buttons (top) or next to the fullscreen button (bottom), your choice (pick in YTVideoOverlay settings). The icon is **white** when off and **YouTube-red** when on.
+A single icon button appears in the YouTube player overlay — either next to the cast/share buttons (top) or next to the fullscreen button (bottom), your choice (pick in YTVideoOverlay settings). The icon is **white** when off and **YouTube-blue** when on.
 
 | Off | On |
 |-----|-----|
-| `SkipSilenceOff@3x.png` (white speaker/skip glyph) | `SkipSilenceOn@3x.png` (YouTube-red speaker/skip glyph) |
+| `SkipSilenceOff@3x.png` (white speaker/skip glyph) | `SkipSilenceOn@3x.png` (YouTube-blue speaker/skip glyph) |
 
-The button is provided by YTVideoOverlay — we just supply an icon, a tap selector, and the toggle state. This is the exact pattern [YouLoop](https://github.com/bhackel/YouLoop/blob/main/Tweak.x) and [YouTimeStamp](https://github.com/Sohday67/YouTimeStamp/blob/main/Tweak.x) use.
+The button is provided by YTVideoOverlay — we just supply an icon, a tap selector, and the toggle state. This is the exact pattern [YouTimeStamp](https://github.com/Sohday67/YouTimeStamp/blob/main/Tweak.x) uses.
 
 ---
 
@@ -77,50 +77,29 @@ YTSkipSilence/
 ## Build prerequisites
 
 1. A working [Theos](https://theos.dev) install (`$THEOS` env var set).
-2. The [`YouTubeHeader`](https://github.com/PoomSmart/YouTubeHeader) headers cloned into `$THEOS/include/YouTubeHeader`. **Do not list it as a private framework in the Makefile** — it is header-only. CI does this with:
-   ```bash
-   git clone --depth=1 https://github.com/PoomSmart/YouTubeHeader.git $THEOS/include/YouTubeHeader
-   ```
-3. The [`PSHeader`](https://github.com/PoomSmart/PSHeader) headers cloned into `$THEOS/include/PSHeader` (provides `PS_ROOT_PATH_NS` and other macros used by `YTVideoOverlay/Init.x`):
-   ```bash
-   git clone --depth=1 https://github.com/PoomSmart/PSHeader.git $THEOS/include/PSHeader
-   ```
-4. A sibling checkout of [PoomSmart/YTVideoOverlay](https://github.com/PoomSmart/YTVideoOverlay) **next to this repo** (i.e. as `../YTVideoOverlay` relative to this Makefile). `Tweak.x` imports `../YTVideoOverlay/Header.h` and `../YTVideoOverlay/Init.x` (the second is `#import`-ed as source — it inlines `initYTVideoOverlay()` into our dylib, exactly as YouLoop / YouTimeStamp do).
+2. The [`YouTubeHeader`](https://github.com/PoomSmart/YouTubeHeader) framework available as a Theos private framework (most YTLite dev environments ship this).
+3. A sibling checkout of [PoomSmart/YTVideoOverlay](https://github.com/PoomSmart/YTVideoOverlay):
 
-5. A jailbroken iOS 15+ device (rootless or roothide) with:
+   ```bash
+   git clone https://github.com/PoomSmart/YTVideoOverlay  ../YTVideoOverlay
+   git clone https://github.com/PoomSmart/YouTubeHeader   ../YouTubeHeader   # if not already present
+   ```
+
+   The `Tweak.x` imports `../YTVideoOverlay/Header.h` and `../YTVideoOverlay/Init.x` (the second is `#import`-ed as source — it inlines `initYTVideoOverlay()` into our dylib, exactly as YouTimeStamp does).
+
+4. A jailbroken iOS 15+ device (rootless or roothide) with:
    - YTLite installed
    - `com.ps.ytvideooverlay (>= 2.0.0)` installed from PoomSmart's repo
 
 ---
 
-## Building inside the YTLitePlusEXTRA orchestrator
-
-This tweak is wired into [`Sohday67/test3YTLitePlusEXTRA`](https://github.com/Sohday67/test3YTLitePlusEXTRA), a CI-only orchestrator repo that clones every extension as a workspace sibling at build time. The orchestrator's GitHub Actions workflow already contains:
-
-```yaml
-- name: Clone YTSkipSilence
-  run: git clone --quiet --depth=1 https://github.com/Sohday67/test5silence.git
-
-- name: Build YTSkipSilence
-  run: |
-    cd test5silence
-    make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
-    mv packages/*.deb ${{ github.workspace }}/ytskipsilence.deb
-```
-
-The orchestrator places `YTVideoOverlay/` and `PSHeader/` (and `YouTubeHeader/`) exactly where our relative imports expect them, so no extra setup is needed when building through that workflow. The resulting `.deb` is automatically injected into the YouTube IPA via `cyan -i youtube.ipa ... -uwef *.deb`.
-
----
-
-## Local build & install
+## Build & install
 
 ```bash
 # 1. Clone this repo and its sibling dependency
-git clone https://github.com/Sohday67/test5silence.git
-cd test5silence
+git clone https://github.com/<your-account>/YTSkipSilence.git
+cd YTSkipSilence
 git clone https://github.com/PoomSmart/YTVideoOverlay.git ../YTVideoOverlay
-
-# (YouTubeHeader and PSHeader must be in $THEOS/include/ — see prerequisites)
 
 # 2. Build for your jailbreak scheme (pick one)
 make package THEOS_PACKAGE_SCHEME=rootless    # for palera1n / Dopamine / NekoJB
@@ -134,7 +113,7 @@ make install THEOS_PACKAGE_SCHEME=rootless THEOS_DEVICE_IP=127.0.0.1 THEOS_DEVIC
 ssh root@127.0.0.1 "killall -9 SpringBoard"
 ```
 
-After install, open YouTube, start any video, and tap the **Skip Silence** button in the player overlay (top or bottom — your choice in YTVideoOverlay settings). The icon turns red when active.
+After install, open YouTube, start any video, and tap the **Skip Silence** button in the player overlay (top or bottom — your choice in YTVideoOverlay settings). The icon turns blue when active.
 
 ---
 
