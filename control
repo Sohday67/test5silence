@@ -1,9 +1,9 @@
-Package: com.example.ytskipsilence
+Package: com.ytskipsilence.tweak
 Name: YTSkipSilence
 Version: 1.0.0
 Architecture: iphoneos-arm
-Description: Skip silence for YouTube/YTLite with a clean YTVideoOverlay button.
-Maintainer: You
-Author: You
+Description: Skip Silence extension for YTLite — ports Overcast's silence-skipping to YouTube. Adds a toggle button to the YouTube video overlay via YTVideoOverlay.
+Maintainer: YTSkipSilence
+Author: YTSkipSilence
 Section: Tweaks
-Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 13.0), com.ps.ytvideooverlay (>= 2.0.0)
+Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 15.0), com.ps.ytvideooverlay (>= 2.0.0)

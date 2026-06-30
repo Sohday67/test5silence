@@ -1,0 +1,19 @@
+/* YTSkipSilence — English localizations */
+
+/* Master toggle shown in YTVideoOverlay's settings panel */
+"ENABLED" = "Show Skip Silence button";
+
+/* Position picker label (provided by YTVideoOverlay) */
+"POSITION" = "Skip Silence button position";
+
+/* Extra boolean settings — titles */
+"YTSkipSilence-VerboseLogging_KEY" = "Verbose logging";
+"YTSkipSilence-VerboseLogging_KEY_DESC" = "Log silence-detection decisions to the system log for debugging.";
+
+"YTSkipSilence-SkipBackward_KEY" = "Skip backward to silence start";
+"YTSkipSilence-SkipBackward_KEY_DESC" = "If on, also rewind to the start of a detected silence before skipping past it. Off by default.";
+
+/* HUD messages (currently unused — reserved for future snackbar feedback) */
+"SILENCE_SKIPPED" = "Skipped %.1fs of silence";
+"SILENCE_ENABLED" = "Skip Silence on";
+"SILENCE_DISABLED" = "Skip Silence off";
