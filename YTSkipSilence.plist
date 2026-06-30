@@ -1,1 +1,10 @@
-{ Filter = { Bundles = ( "com.google.ios.youtube" ); }; }
+{
+  Filter = {
+    Executables = (
+      YouTube
+    );
+    Bundles = (
+      "com.google.ios.youtube"
+    );
+  };
+}
