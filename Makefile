@@ -1,23 +1,37 @@
-ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
-TARGET = iphone:clang:latest:15.0
-else ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
-TARGET = iphone:clang:latest:15.0
+ARCHS = arm64 arm64e
+ifeq ($(SIMULATOR),1)
+	TARGET = simulator:clang:latest:15.0
 else
-TARGET = iphone:clang:latest:13.0
+	ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
+		TARGET = iphone:clang:latest:15.0
+	else ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
+		TARGET = iphone:clang:latest:15.0
+	else
+		TARGET = iphone:clang:latest:11.0
+	endif
 endif
 
-ARCHS = arm64
 INSTALL_TARGET_PROCESSES = YouTube
 
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = YTSkipSilence
 
-YTSkipSilence_FILES = Tweak.xm \
-                      Sources/YTSSSilenceController.m \
-                      Sources/YTSSIconFactory.m \
-                      Sources/YTSSHUD.m
-YTSkipSilence_CFLAGS = -fobjc-arc -I. -ISources -IVendor -Wno-deprecated-declarations -Wno-unused-function -Wno-objc-method-access -Wno-unguarded-availability-new
-YTSkipSilence_FRAMEWORKS = UIKit AVFoundation CoreMedia AudioToolbox QuartzCore
+# Skip-silence works by decoding the video's progressive AAC audio stream with
+# AVAssetReader (in-process) and building a silence map — NOT by tapping the live
+# HLS AVPlayer (which is impossible). SkipSilenceDetector.m / SkipSilenceAudioTap.m
+# are the old MTAudioProcessingTap path; they're kept in the repo for reference but
+# are no longer built.
+$(TWEAK_NAME)_FILES = \
+	Tweak.x \
+	Source/SkipSilenceSettings.m \
+	Source/SkipSilenceStreamAnalyzer.m \
+	Source/SkipSilenceManager.m
+
+$(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-function
+$(TWEAK_NAME)_FRAMEWORKS = UIKit AVFoundation CoreMedia CoreAudio AudioToolbox
+# NOTE: YouTubeHeader is a headers-only collection (provided on the include path
+# by the parent project) — it is NOT a linkable framework. Listing it here made
+# the linker fail with "framework 'YouTubeHeader' not found".
 
 include $(THEOS_MAKE_PATH)/tweak.mk
