@@ -17,7 +17,7 @@ YTSkipSilence_FILES = Tweak.xm \
                       Sources/YTSSSilenceController.m \
                       Sources/YTSSIconFactory.m \
                       Sources/YTSSHUD.m
-YTSkipSilence_CFLAGS = -fobjc-arc -I. -ISources -IVendor -Wno-deprecated-declarations -Wno-unused-function
+YTSkipSilence_CFLAGS = -fobjc-arc -I. -ISources -IVendor -Wno-deprecated-declarations -Wno-unused-function -Wno-objc-method-access -Wno-unguarded-availability-new
 YTSkipSilence_FRAMEWORKS = UIKit AVFoundation CoreMedia AudioToolbox QuartzCore
 
 include $(THEOS_MAKE_PATH)/tweak.mk

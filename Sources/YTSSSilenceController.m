@@ -160,7 +160,7 @@ static NSArray<NSValue *> *YTSSAnalyzeSilentRanges(AVAsset *asset) {
         AVFormatIDKey: @(kAudioFormatLinearPCM),
         AVLinearPCMIsFloatKey: @YES,
         AVLinearPCMBitDepthKey: @32,
-        AVLinearPCMIsNonInterleaved: @NO,
+        AVLinearPCMIsNonInterleavedKey: @NO,
     };
 
     AVAssetReaderTrackOutput *output = [[AVAssetReaderTrackOutput alloc] initWithTrack:audioTrack outputSettings:settings];

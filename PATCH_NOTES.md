@@ -1,16 +1,24 @@
 # Patch notes
 
-## Build-failure fix v2
+## v3 build fix
 
-The GitHub Actions job failed in the Theos dylib link step for `YTSkipSilence.dylib` on both the `arm64e` and `arm64` targets. The previous implementation intentionally avoided linking MediaToolbox symbols directly, but it still depended on `MTAudioProcessingTap` types and runtime behavior that can be fragile in public SDK / Theos CI builds.
+The third GitHub Actions run reached `Sources/YTSSSilenceController.m` and then failed before the `YTSkipSilence.dylib` target completed. The source contained one invalid AVFoundation key:
 
-This revision removes the MediaToolbox audio tap path completely and uses a conservative AVFoundation-only implementation:
+- Incorrect: `AVLinearPCMIsNonInterleaved`
+- Correct: `AVLinearPCMIsNonInterleavedKey`
 
-- `ARCHS` is now `arm64`, matching the working YouTimeStamp example and avoiding unnecessary arm64e packaging friction in YTLitePlus workflows.
-- The tweak no longer imports, links, or dynamically resolves MediaToolbox.
-- Silence ranges are analyzed with `AVAssetReader` using linear PCM windows.
-- Playback skipping is driven by an `AVPlayer` periodic time observer.
-- Jump mode seeks to the end of detected silent ranges.
-- Rate-through mode temporarily speeds playback while inside detected silent ranges.
+This has been fixed in v3.
 
-This keeps the Overcast-inspired behavior model (`audio peaks/signature -> skip/rate through silence`) while using only public AVFoundation/CoreMedia APIs that are available to the GitHub Actions SDK.
+Additional guardrails:
+
+- Added permissive warning flags for private/optional Objective-C selectors so Actions does not fail on SDK warning churn.
+- Kept the v2 AVFoundation-only analysis path. No MediaToolbox / `MTAudioProcessingTap` symbols are linked.
+- Kept the YTVideoOverlay button registration pattern with sibling-header preference and vendored fallback headers.
+
+If another failure appears, rerun with:
+
+```sh
+make clean package DEBUG=1 messages=yes THEOS_PACKAGE_SCHEME=rootless
+```
+
+That will force Theos to print the exact compiler/linker command and diagnostic line.

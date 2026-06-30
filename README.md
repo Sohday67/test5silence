@@ -53,3 +53,14 @@ make package
 YouTube changes private classes often. The overlay button is intentionally based on YTVideoOverlay's public integration template. Silence analysis now happens through `AVAssetReader`, so some encrypted, live, or remote streaming assets may not expose readable audio samples. In those cases the button still toggles cleanly, but skipping may not activate for that item.
 
 See `docs/OVERCAST_FINDINGS.md` for the non-code IPA inspection notes that informed the behavior model.
+
+
+## Build note for v3
+
+Version 3 fixes an AVFoundation typo that broke the Actions build in `Sources/YTSSSilenceController.m`: `AVLinearPCMIsNonInterleaved` is now correctly `AVLinearPCMIsNonInterleavedKey`.
+
+For the most useful diagnostics, build with:
+
+```sh
+make clean package DEBUG=1 messages=yes THEOS_PACKAGE_SCHEME=rootless
+```
